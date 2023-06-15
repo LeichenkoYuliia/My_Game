@@ -1,9 +1,10 @@
 from pygame import draw
 from game_objects_models import enemy_soldier_image
 
+
 class EnemySoldier(object):
     model = enemy_soldier_image
-    hit_point = 10
+    hit_point = 2
 
     def __init__(self, x, y, width, height):
         self.x = x
@@ -24,6 +25,3 @@ class EnemySoldier(object):
     def hit(self):
         if EnemySoldier.hit_point > 0:
             EnemySoldier.hit_point -= 1
-        # else:
-        #     global game_state
-        #     game_state = "sad_game_over"

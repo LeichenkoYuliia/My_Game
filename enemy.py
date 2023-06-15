@@ -1,7 +1,6 @@
 from pygame import draw
 
 from game_objects_models import enemy_image
-from utils import GameStates
 
 
 class Enemy(object):
@@ -51,6 +50,4 @@ class Enemy(object):
     def hit(self):
         if self.health > 0:
             self.health -= 5
-        # else:
-        #     global game_state
-        #     game_state = GameStates.WIN
+

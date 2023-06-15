@@ -1,7 +1,10 @@
 from game_objects_models import plane_image
+
+
 class Plane(object):
     model = plane_image
     model_reverse = plane_image[::-1]
+
     def __init__(self, x, y, width, height):
         self.x = x
         self.y = y
@@ -30,6 +33,3 @@ class Plane(object):
                 self.fly_count += 1
                 self.hit_box = (self.x, self.y, 220, 220)
                 # pygame.draw.rect(window, (255, 0, 0), self.hit_box, 2)
-        # else:
-        #     global game_state
-        #     game_state = "game_over"

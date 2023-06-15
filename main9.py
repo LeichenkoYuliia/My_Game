@@ -176,7 +176,7 @@ if __name__ == "__main__":
                     else:
                         soldier.hit()
                         if soldier.hit_point <= 0:
-                            game.state = GameStates.LOSE
+                            game.state = GameStates.GAME_OVER
                         soldiers.remove(soldier)
 
                 for bullet in bullets.copy():
@@ -227,6 +227,7 @@ if __name__ == "__main__":
                 if keys[pygame.K_q]:
                     pygame.quit()
                     quit()
+
             if game.state == GameStates.WIN:
                 game.game_over_screen(winner_screen)
                 if keys[pygame.K_r]:
