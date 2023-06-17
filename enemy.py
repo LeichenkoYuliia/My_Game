@@ -1,5 +1,5 @@
 from pygame import draw
-
+import pygame
 from game_objects_models import enemy_image
 
 
@@ -15,7 +15,7 @@ class Enemy(object):
         self.step = 7
         self.fly_count = 0
         self.hit_box = (self.x + 75, self.y, 150, 100)
-        self.health = 100
+        self.health = 125
         self.visible = True
 
     def move(self):
@@ -44,10 +44,10 @@ class Enemy(object):
             self.hit_box = (self.x + 75, self.y, 150, 100)
             draw.rect(window, (255, 0, 0), (self.hit_box[0] - 50, self.hit_box[1] - 10, 250, 10))
             draw.rect(window, (57, 255, 20),
-                      (self.hit_box[0] - 50, self.hit_box[1] - 10, 250 - (2.5 * (100 - self.health)), 10))
+                      (self.hit_box[0] - 50, self.hit_box[1] - 10, 250 - (2 * (125 - self.health)), 10))
             # pygame.draw.rect(window, (255, 0, 0), self.hit_box, 2)
 
     def hit(self):
         if self.health > 0:
-            self.health -= 5
+            self.health -= 3
 
