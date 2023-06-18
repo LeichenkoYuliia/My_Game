@@ -1,5 +1,5 @@
 from game_objects_models import plane_image
-
+import pygame
 
 class Plane(object):
     model = plane_image

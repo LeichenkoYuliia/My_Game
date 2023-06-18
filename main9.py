@@ -1,20 +1,26 @@
 import random
+import time
 
 import pygame
-from game_objects_models import background1, background, winner_screen, game_over
+from game_objects_models import background1, background, sad_background, winner_screen, game_over, keyboard
 from player import Plane
 from enemy import Enemy
 from soldier import EnemySoldier
 from rocket import Rocket
 from fire import Fire
-
+from explosion import Explosion
 from utils import GameStates
 
 pygame.init()
 window = pygame.display.set_mode((1920, 1080))
 pygame.display.set_caption("Mriya Game")
 game_font = pygame.font.Font(None, 30)
+music1 = pygame.mixer.music.load("music/1.mp3")
+pygame.mixer.music.play(-1)
 
+fire_sound = pygame.mixer.Sound("music/fire/boom-4.mp3")
+fire_sound.set_volume(1)
+rockets_sound = pygame.mixer.Sound("music/rockets/1.mp3")
 clock = pygame.time.Clock()
 
 color_spd = 8
@@ -29,6 +35,13 @@ class Game:
     def draw_start_menu(self):
         window.blit(background1, (0, 0))
         self.draw_text("Press S to start game", 'arial', 40, def_color, window.get_width() / 2, window.get_height() / 2)
+        self.change_color(def_color, color_dir)
+        pygame.display.update()
+
+    def draw_keyboard_menu(self):
+        window.blit(background, (0, 0))
+        window.blit(keyboard, (600, 550))
+        self.draw_text("Press SPACE to start game", 'arial', 40, def_color, window.get_width() / 2, window.get_height() / 2)
         self.change_color(def_color, color_dir)
         pygame.display.update()
 
@@ -47,8 +60,8 @@ class Game:
             elif color[i] <= 0:
                 color[i] = 255
 
-    def game_over_screen(self, image):
-        window.blit(background, (0, 0))
+    def game_over_screen(self, background_screen, image):
+        window.blit(background_screen, (0, 0))
         window.blit(image,
                     (window.get_width() / 2 - image.get_width() / 2, window.get_height() / 2 - image.get_height() / 2))
         self.draw_text("R - Restart", 'arial', 40, def_color, window.get_width() / 2, window.get_height() - 400)
@@ -58,12 +71,17 @@ class Game:
 
     def redraw_game_window(self):
         window.blit(background, (0, 0))
-        enemy.draw(window)
+
         for soldier in soldiers:
             soldier.draw(window)
-        mriya.draw(window)
-        if mriya.health <= 0:
+        for explosion in Explosion.explosions.copy():
+            explosion.draw_explosion(window)
+        if not enemy.visible and len(Explosion.explosions) == 0:
+            self.state = GameStates.WIN
+        enemy.draw(window)
+        if not mriya.health and len(Explosion.explosions) == 0:
             self.state = GameStates.GAME_OVER
+        mriya.draw(window)
         for rocket in rockets:
             rocket.draw(window)
         if not mriya.super_fly:
@@ -88,9 +106,10 @@ class Game:
             for rocket in enemy_rockets.copy():
                 if self.check_hit(enemy_rockets, our_plane):
                     our_plane.health = False
+                    if len(Explosion.explosions) < 1:
+                        Explosion.explosions.append(Explosion(mriya.x, mriya.y, 150, 150, "plane"))
                 if 1080 > rocket.y > -260:
                     rocket.y += rocket.step
-
         else:
             for rocket in enemy_rockets.copy():
                 if rocket.hit_box[1] - rocket.hit_box[3] / 2 < our_plane.hit_box_super_fly[1] + \
@@ -101,6 +120,8 @@ class Game:
                             rocket.hit_box[2] / 2 < our_plane.hit_box_super_fly[0] + \
                             our_plane.hit_box_super_fly[2]:
                         our_plane.health = False
+                        if len(Explosion.explosions) < 1:
+                            Explosion.explosions.append(Explosion(mriya.x, mriya.y, 150, 150, "plane"))
                 if 1080 > rocket.y > -260:
                     rocket.y += rocket.step
 
@@ -117,8 +138,9 @@ if __name__ == "__main__":
         bullets2 = []
         soldiers = []
         rockets = []
-        EnemySoldier.hit_point = 10
+        EnemySoldier.hit_point = 3
         shoot_loop = 0
+
         while run:
             clock.tick(27)
 
@@ -135,22 +157,35 @@ if __name__ == "__main__":
             keys = pygame.key.get_pressed()
 
             if game.state == GameStates.START_MENU:
+                pygame.mixer.music.unpause()
                 game.draw_start_menu()
+
                 if keys[pygame.K_s]:
+                    game.state = GameStates.KEYBOARD_MENU
+
+            if game.state == GameStates.KEYBOARD_MENU:
+                game.draw_keyboard_menu()
+
+                if keys[pygame.K_SPACE]:
                     game.state = GameStates.GAME
 
             if game.state == GameStates.GAME:
-                if keys[pygame.K_LEFT] and mriya.x > mriya.step:
+                pygame.mixer.music.pause()
+                if keys[pygame.K_q]:
+                    pygame.quit()
+                    quit()
+                if keys[pygame.K_a] and mriya.x > mriya.step:
                     mriya.x -= mriya.step
-                elif keys[pygame.K_RIGHT] and mriya.x < 1920 - mriya.width - mriya.step:
+                if keys[pygame.K_d] and mriya.x < 1920 - mriya.width - mriya.step:
                     mriya.x += mriya.step
-                if keys[pygame.K_UP]:
+                if keys[pygame.K_w] and not mriya.super_fly:
                     mriya.super_fly = True
                     mriya.fly_count = 0
-                if keys[pygame.K_DOWN]:
+                if keys[pygame.K_s] and mriya.super_fly:
                     mriya.super_fly = False
                     mriya.fly_count = 0
                 if keys[pygame.K_SPACE] and shoot_loop == 0:
+                    fire_sound.play()
                     if len(bullets) < 4:
                         bullets.append(
                             Fire(round(mriya.x + mriya.width // 2) + 35, round(mriya.y + mriya.height // 2) - 35, 25,
@@ -168,14 +203,18 @@ if __name__ == "__main__":
 
                 for soldier in soldiers.copy():
                     if game.check_hit(bullets, soldier):
+                        if len(Explosion.explosions) < 1:
+                            Explosion.explosions.append(Explosion(soldier.x, soldier.y, 75, 75, "soldier"))
                         soldiers.remove(soldier)
                     if game.check_hit(bullets2, soldier):
+                        if len(Explosion.explosions) < 1:
+                            Explosion.explosions.append(Explosion(soldier.x, soldier.y, 75, 75, "soldier"))
                         soldiers.remove(soldier)
                     if 1080 > soldier.y > 0:
                         soldier.y += soldier.step
                     else:
                         soldier.hit()
-                        if soldier.hit_point <= 0:
+                        if EnemySoldier.hit_point <= 0:
                             game.state = GameStates.GAME_OVER
                         soldiers.remove(soldier)
 
@@ -183,7 +222,9 @@ if __name__ == "__main__":
                     if game.check_hit(bullets, enemy):
                         enemy.hit()
                         if enemy.health <= 0:
-                            game.state = GameStates.WIN
+                            if len(Explosion.explosions) < 1:
+                                Explosion.explosions.append(Explosion(enemy.x, enemy.y - 75, 75, 75, "helicopter"))
+                            enemy.visible = False
                     if 1080 > bullet.y > 0:
                         bullet.y -= bullet.step
                     else:
@@ -193,47 +234,50 @@ if __name__ == "__main__":
                     if game.check_hit(bullets2, enemy):
                         enemy.hit()
                         if enemy.health <= 0:
-                            game.state = GameStates.WIN
+                            if len(Explosion.explosions) < 1:
+                                Explosion.explosions.append(Explosion(enemy.x, enemy.y - 75, 75, 75, "helicopter"))
+                            enemy.visible = False
                     if 1080 > bullet.y > 0:
                         bullet.y -= bullet.step
                     else:
                         bullets2.remove(bullet)
 
-                if enemy.health <= 75:
+                if enemy.health <= 100:
                     if len(rockets) < 20:
                         rockets.append(
                             Rocket(random.randint(0, 1920), -250, 70, 250))
+                        rockets_sound.play()
                     game.check_plane_hit(mriya, rockets)
 
-                if enemy.health <= 50:
+                if enemy.health <= 60:
                     if len(rockets) < 40:
                         rockets.append(
                             Rocket(random.randint(0, 1920), -250, 70, 250))
+                        rockets_sound.play()
                     game.check_plane_hit(mriya, rockets)
 
-                if enemy.health <= 25:
+                if enemy.health <= 30:
                     if len(rockets) < 60:
                         rockets.append(
                             Rocket(random.randint(0, 1920), -250, 70, 250))
+                        rockets_sound.play()
                     game.check_plane_hit(mriya, rockets)
                 game.redraw_game_window()
 
             if game.state == GameStates.GAME_OVER:
-                game.game_over_screen(game_over)
+                game.game_over_screen(sad_background, game_over)
                 if keys[pygame.K_r]:
                     game.state = GameStates.START_MENU
                     run = False
-
                 if keys[pygame.K_q]:
                     pygame.quit()
                     quit()
 
             if game.state == GameStates.WIN:
-                game.game_over_screen(winner_screen)
+                game.game_over_screen(background, winner_screen)
                 if keys[pygame.K_r]:
                     game.state = GameStates.START_MENU
                     run = False
-
                 if keys[pygame.K_q]:
                     pygame.quit()
                     quit()
